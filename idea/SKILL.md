@@ -31,12 +31,10 @@ If `PWD` is not under `/home/jevido/Projects/`, or `PROJECT` resolves to empty o
 
 ## The Document
 
-`AWESOME.md` is one document per project, the backlog and the dump in one place:
+`AWESOME.md` is one document per project, the backlog and the dump in one place. It is **only what is still to come** — a title, then cornerstones. No introduction, no explanation of what the document is for, no links to the other two, no dates. Anyone reading it wants the queue, not a preamble:
 
 ```markdown
 # <Project> — awesome
-
-<One paragraph: what this project is trying to become.>
 
 ## <Cornerstone>
 
@@ -55,7 +53,7 @@ A **segment** (`###`) is the unit `/planning` turns into a phase.
 
 ## What to Do
 
-1. Read `$AWESOME`. If it does not exist, create it — derive the cornerstones from the project's `CLAUDE.md` and its `phases/`, never a placeholder list.
+1. Read `$AWESOME`. If it does not exist, create it: the title line, then cornerstones derived from the project's `CLAUDE.md` and its `phases/`. Never a placeholder list, and never an intro paragraph.
 2. Put the idea where it belongs: an existing segment, a new segment under an existing cornerstone, or a new cornerstone. Read the existing `##` headings first — most ideas belong under one that is already there.
 3. Write it as **one line per idea**. Several ideas in one prompt are several bullets; never merge them. Keep the user's own words and their emphasis — tidy the grammar, not the opinion.
 4. If a thought genuinely needs a paragraph, it is a segment: give it a `###` heading and put the paragraph under it.
@@ -74,3 +72,4 @@ cd /home/jevido/Projects/planning && git add "$PROJECT/AWESOME.md" && git commit
 - Checking whether it already exists in the code — `/planning` does that, once, for the segment it is about to build.
 - Deciding priority or order — `/planning` spars over that.
 - Removing anything. Ideas leave `AWESOME.md` only when `/planning` turns them into a phase.
+- Writing anything into the document that is not a future idea. No intro, no status, no "last checked" line, no pointer to `SUMMARY.md`. The moment it describes itself it stops being a queue.
