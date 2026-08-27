@@ -9,10 +9,11 @@ description: >
 
 # Work Skill
 
-Implements tasks from the current project's planning directory in strict sequential order.
+Implements tasks from the current project's planning directory in strict sequential order, and stops when it runs out. It loops on its own — start it and leave it.
 
-Planning is **always scoped to a project**. Phases live inside that project's
-directory under the planning repo.
+Planning is **always scoped to a project**. Phases live inside that project's directory under the planning repo.
+
+`/idea` and `/planning` may be running in other terminals against this same planning repo. That is fine and expected: they write `AWESOME.md` and `phases/<new>`, this skill writes task frontmatter and `SUMMARY.md`. The one rule that keeps them out of each other's way is **stage only your own paths, never `git add -A`**.
 
 ## Constants & Project Detection
 
@@ -109,7 +110,7 @@ git commit -m "<type>(<scope>): <what was done>
 Implements planning task: <project>/phases/<phase-dir>/<task-file>"
 ```
 
-**Commit 2 — planning status** (in the planning repo):
+**Commit 2 — planning status** (in the planning repo). Stage the one task file and nothing else — another terminal may have uncommitted work here:
 ```bash
 cd /home/jevido/Projects/planning
 git add "$PROJECT/phases/<phase-dir>/<task-file>.md"
@@ -153,6 +154,8 @@ git add "$PROJECT/SUMMARY.md" "$PROJECT/phases/<phase-dir>"
 git commit -m "done(<project>): phase <NN> <title>"
 ```
 
+If a new phase appeared while you were working — `/planning` running in another terminal — that is normal. Pick it up on the next pass through Step 1.
+
 Then report the completed phase to the user, and say what it added to SUMMARY.md.
 
 ### Step 9 — Loop
@@ -170,6 +173,8 @@ Go back to Step 1.
 - Never skip verification to go faster.
 - **Never** finish a phase without updating `SUMMARY.md` — or deciding, explicitly and out loud, that the phase added no capability worth naming.
 - **Never** write a task, a date or a phase number into `SUMMARY.md`. That document has no history in it.
+- **Never** invent a document. Three files per project: `AWESOME.md`, `SUMMARY.md`, `phases/`. No roadmap, no status file, no index.
+- **Never** `git add -A` in the planning repo. Stage the exact paths you wrote.
 
 ---
 
