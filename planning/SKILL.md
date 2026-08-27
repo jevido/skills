@@ -1,46 +1,79 @@
 ---
 name: planning
 description: >
-  Create phases and tasks in the planning repo at /home/jevido/Projects/planning.
-  Use when the user wants to plan, scope, or break down work into phases and tasks.
-  Invoked with /planning <description of what to plan>.
+  Create phases and tasks in the planning repo at /home/jevido/Projects/planning,
+  scoped to the current project. Use when the user wants to plan, scope, or break
+  down work into phases and tasks. Invoked with /planning <description of what to plan>.
 ---
 
 # Planning Skill
 
-Creates phases and tasks in `/home/jevido/Projects/planning`.
+Creates phases and tasks in `/home/jevido/Projects/planning/<project>`.
 
-## Constants
+Planning is **always scoped to a project**. Phases live inside that
+project's directory under the planning repo.
 
-```
+## Constants & Project Detection
+
+```bash
 PLANNING_DIR=/home/jevido/Projects/planning
-PHASES_DIR=$PLANNING_DIR/phases
+PROJECTS_ROOT=/home/jevido/Projects
+
+# Derive project from the current working directory.
+# e.g. /home/jevido/Projects/mono/apps/web  -> PROJECT=mono
+#      /home/jevido/Projects/sentinel       -> PROJECT=sentinel
+REL=${PWD#$PROJECTS_ROOT/}
+PROJECT=${REL%%/*}
+
+PROJECT_DIR="$PLANNING_DIR/$PROJECT"
+PHASES_DIR="$PROJECT_DIR/phases"
+AWESOME="$PROJECT_DIR/AWESOME.md"
+SUMMARY="$PROJECT_DIR/SUMMARY.md"
 ```
+
+**Project mapping** (working dir → planning dir):
+
+| Working dir                              | Planning dir                                |
+|------------------------------------------|---------------------------------------------|
+| `/home/jevido/Projects/allunited-docker` | `/home/jevido/Projects/planning/allunited-docker` |
+| `/home/jevido/Projects/mono`             | `/home/jevido/Projects/planning/mono`       |
+| `/home/jevido/Projects/sentinel`         | `/home/jevido/Projects/planning/sentinel`   |
+
+If `PWD` is not under `/home/jevido/Projects/`, or `PROJECT` resolves to empty or
+`planning`, the project is ambiguous — **ask the user which project** before creating
+anything.
 
 ## What to Do When Invoked
 
-1. **Understand scope** from the user's prompt and current conversation context.
-   - Check for idea files relevant to the user's prompt. Look in `$PLANNING_DIR/console/ideas/` for console work, `$PLANNING_DIR/ideas/` for web/general work. If a match exists, use it as input context. After promoting it to a phase, delete the idea file and include it in the commit.
-2. **Decide structure**: how many phases, what tasks each phase needs.
+1. **Detect project** using the logic above. Confirm it if ambiguous.
+2. **Understand scope** from the user's prompt and current conversation context.
+   - Read `$AWESOME` and find the segment (a `###` heading) the prompt names. That segment's
+     bullets are the input: each one is a task or part of one. Note which cornerstone (`##`)
+     it sits under — the phase inherits it, and `SUMMARY.md` will file the shipped work there.
+   - If the segment is rough — bullets that are paragraphs, claims with no location, ideas that
+     have not been checked against the code — **stop and say so**. Recommend `/awesome sharpen
+     <segment>` first. A phase planned off an unsharpened segment plans against a repo that may
+     not exist.
+   - If the prompt names no segment, plan from the prompt alone and do not touch `$AWESOME`.
+3. **Decide structure**: how many phases, what tasks each phase needs.
    - One phase per distinct deliverable or logical boundary.
    - Tasks are concrete, implementable units of work within a phase.
    - Aim for tasks that take 1–4 hours each.
-3. **Create phases** (in order) using the shell logic below.
-4. **Create tasks** for each phase using the shell logic below.
-5. **Fill every template field** — no `<placeholder>` text left.
+4. **Create phases** (in order) using the shell logic below.
+5. **Create tasks** for each phase using the shell logic below.
+6. **Fill every template field** — no `<placeholder>` text left.
 
 ---
 
 ## Shell: Create a Phase
 
 ```bash
-PLANNING_DIR=/home/jevido/Projects/planning
-mkdir -p "$PLANNING_DIR/phases"
+mkdir -p "$PHASES_DIR"
 SLUG=<kebab-case-slug>
 
-LAST=$(ls "$PLANNING_DIR/phases/" 2>/dev/null | grep -E '^\d{2}-' | sort | tail -1 | grep -oE '^\d+' || echo "00")
+LAST=$(ls "$PHASES_DIR/" 2>/dev/null | grep -E '^[0-9]{2}-' | sort | tail -1 | grep -oE '^[0-9]+' || echo "00")
 NEXT=$(printf "%02d" $((10#$LAST + 1)))
-PHASE_DIR="$PLANNING_DIR/phases/${NEXT}-${SLUG}"
+PHASE_DIR="$PHASES_DIR/${NEXT}-${SLUG}"
 mkdir -p "$PHASE_DIR"
 ```
 
@@ -48,6 +81,8 @@ Then write `$PHASE_DIR/goal.md` with this template (fully filled):
 
 ```markdown
 # Phase ${NEXT} — <Title>
+
+**Cornerstone:** <the `##` heading this came from in AWESOME.md>
 
 ## Goal
 
@@ -75,10 +110,10 @@ When all tasks in this phase are done:
 ## Shell: Create a Task
 
 ```bash
-PHASE_DIR="$PLANNING_DIR/phases/<NN-slug>"
+PHASE_DIR="$PHASES_DIR/<NN-slug>"
 SLUG=<kebab-case-slug>
 
-LAST=$(ls "$PHASE_DIR"/*.md 2>/dev/null | grep -v goal.md | sort | tail -1 | xargs -r basename | grep -oE '^\d+' || echo "00")
+LAST=$(ls "$PHASE_DIR"/*.md 2>/dev/null | grep -v goal.md | sort | tail -1 | xargs -r basename | grep -oE '^[0-9]+' || echo "00")
 NEXT=$(printf "%02d" $((10#$LAST + 1)))
 TASK_FILE="$PHASE_DIR/${NEXT}-${SLUG}.md"
 ```
@@ -115,6 +150,19 @@ status: todo
 
 ---
 
+## Draining the Segment
+
+A segment leaves `AWESOME.md` the moment it becomes a phase. Once every task file is written:
+
+- Delete the whole `###` segment from `$AWESOME`, heading and bullets.
+- If that empties its cornerstone, leave the `##` heading and its one-line description in place — the cornerstone is the stable spine, shared with `SUMMARY.md`, and an empty one means "nothing queued here", which is worth reading.
+- Anything in the segment that did **not** make it into a task stays behind as bullets under the same segment. Never drop an idea by planning around it; say in the summary what was left.
+- Add the phase to `ROADMAP.md` if the project keeps one.
+
+The deletion goes in the same commit as the phase, so a segment can never exist in two places.
+
+---
+
 ## Ordering Rule
 
 Tasks run in number order. Never start task N+1 before task N has `status: done`. To insert a task between existing ones, manually renumber the affected files.
@@ -123,9 +171,9 @@ Tasks run in number order. Never start task N+1 before task N has `status: done`
 
 ## After Creating Files
 
-- Print a summary: phases created, tasks per phase.
+- Print a summary: project, phases created, tasks per phase.
 - If context suggests the work should start immediately, say so and recommend `/work`.
 - Commit the planning repo if there are files to commit:
   ```bash
-  cd /home/jevido/Projects/planning && git add -A && git commit -m "plan: <short summary of what was planned>"
+  cd /home/jevido/Projects/planning && git add -A && git commit -m "plan(<project>): <short summary of what was planned>"
   ```
