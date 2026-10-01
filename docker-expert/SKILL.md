@@ -5,6 +5,13 @@ category: devops
 risk: unknown
 source: community
 date_added: "2026-02-27"
+paths:
+  - "**/Dockerfile*"
+  - "**/*.dockerfile"
+  - "**/.dockerignore"
+  - "**/compose*.y*ml"
+  - "**/docker-compose*.y*ml"
+  - "deploy/**"
 ---
 
 # Docker Expert

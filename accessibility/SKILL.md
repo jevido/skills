@@ -5,6 +5,12 @@ license: MIT
 metadata:
   author: web-quality-skills
   version: "1.1"
+paths:
+  - "**/*.svelte"
+  - "**/*.html"
+  - "**/*.tsx"
+  - "**/*.jsx"
+  - "**/*.vue"
 ---
 
 # Accessibility (a11y)
