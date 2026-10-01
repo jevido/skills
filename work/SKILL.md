@@ -13,7 +13,7 @@ Implements tasks from the current project's planning directory in strict sequent
 
 Planning is **always scoped to a project**. Phases live inside that project's directory under the planning repo.
 
-`/idea` and `/planning` may be running in other terminals against this same planning repo. That is fine and expected: they write `AWESOME.md` and `phases/<new>`, this skill writes task frontmatter and `SUMMARY.md`. The one rule that keeps them out of each other's way is **stage only your own paths, never `git add -A`**.
+`/idea` and `/planning` may be running in other terminals against this same planning repo. That is fine and expected: `/idea` writes `AWESOME.md`, `/planning` writes `phases/<new>` and `<goal>/GOAL.md`, ralph writes `<goal>/NOTES.md` and a goal's `status`, this skill writes task frontmatter and `SUMMARY.md`. The one rule that keeps them out of each other's way is **stage only your own paths, never `git add -A`**.
 
 ## Constants & Project Detection
 
@@ -30,6 +30,9 @@ PROJECT=${REL%%/*}
 PROJECT_DIR="$PLANNING_DIR/$PROJECT"
 PHASES_DIR="$PROJECT_DIR/phases"
 SUMMARY="$PROJECT_DIR/SUMMARY.md"
+# Goals sit beside phases/, one directory each: $PROJECT_DIR/<goal>/GOAL.md and NOTES.md.
+# They are not phases and hold no tasks. A phase's goal.md names the goal it serves
+# on its **Goal:** line; read that GOAL.md too, for what is fixed.
 ```
 
 **Project mapping** (working dir → planning dir):
@@ -51,25 +54,17 @@ Repeat until all tasks are done, a task is blocked, or context is running low:
 
 ### Step 1 — Find Next Task
 
-**One command. Do not list phases, do not open task files to read their status.**
-
 ```bash
-cd "$PHASES_DIR" && grep -H '^status:' */*.md | grep -v '/goal\.md:' | sort \
-  | awk -F':' '$3 !~ /done|declined/ { print $1 " ->" $3; exit }'
+ls "$PHASES_DIR/" | sort
 ```
 
-Phase and task filenames are zero-padded, so lexical sort *is* execution order: the
-single line this prints is the current task, and the hard rule below is satisfied by
-construction. No output at all means every task is done — report that and stop.
-
-The status it prints decides what happens next:
-
-- `todo` — this is the current task, go to Step 2.
-- `in_progress` — a previous session was interrupted here. Same thing: this is the
-  current task. Re-establish where it got to from `git log` and the working tree
-  before implementing, not by re-reading the whole phase.
-- `blocked` — **stop and report.** Print the path, the title and the **Notes**
-  section. Do not skip it, do not start anything after it.
+For each phase directory (ascending order):
+- Read `goal.md` for phase context.
+- List task files: `ls <phase-dir>/*.md | grep -v goal.md | sort`
+- Read each task file's frontmatter to get `status`.
+- Skip if `status: done`.
+- **Stop and report** if `status: blocked` — describe the blocker to the user, halt the loop.
+- Take the first `status: todo` task. This is the current task.
 
 **Hard rule:** Never move to phase N+1 until every task in phase N is `status: done`.
 
@@ -77,14 +72,9 @@ The status it prints decides what happens next:
 
 Read:
 - The task file (all sections: What, Why, How, Test, Notes)
-- The phase `goal.md` — **once per phase, not once per task.** Every task in a phase
-  shares it, and it is already in context for the second task onward.
+- The phase `goal.md`
+- The `GOAL.md` its `**Goal:**` line names, if any — what it says is fixed holds for this task too
 - Any referenced files mentioned in the task
-
-Read nothing else from the planning repo. In particular: not the sibling task files,
-not `AWESOME.md`, not `SUMMARY.md` (until Step 8 says so), and not the phases behind
-this one. A task file states what it needs; a neighbouring task is somebody else's
-turn and costs the same context as this one.
 
 ### Step 3 — Mark In Progress
 
@@ -187,34 +177,16 @@ Go back to Step 1.
 - Never skip verification to go faster.
 - **Never** finish a phase without updating `SUMMARY.md` — or deciding, explicitly and out loud, that the phase added no capability worth naming.
 - **Never** write a task, a date or a phase number into `SUMMARY.md`. That document has no history in it.
-- **Never** invent a document. Three files per project: `AWESOME.md`, `SUMMARY.md`, `phases/`. No roadmap, no status file, no index.
+- **Never** invent a document. Per project: `AWESOME.md`, `SUMMARY.md`, `phases/`, and one directory per goal with `GOAL.md` and `NOTES.md`. No roadmap, no status file, no index.
+- **Never** write a `GOAL.md`. Goals are the user's and `/planning`'s; ralph sets their `status`.
 - **Never** `git add -A` in the planning repo. Stage the exact paths you wrote.
 
 ---
 
-## Context Is The Budget
+## Context Running Low
 
-This skill loops until the context runs out, so how much a task costs decides how many
-tasks a session gets through. The loop is designed to cost one task's worth of reading
-per task — keep it that way:
-
-- **Never re-scan.** Step 1 is one `grep` printing one line. A second pass over the
-  phases directory, or opening task files to check their status, is the single most
-  expensive mistake available here.
-- **Read the slice, not the file.** `sed -n '120,180p'` and `git grep -n` over a
-  known symbol beat reading a 900-line route. This repo has files that cost thousands
-  of tokens to open in full and answer the question in twenty lines.
-- **Verify with the cheap check.** `bun run test` per package (~1s) during the work.
-  `svelte-check` is slow *and* verbose; run it once at the end of a phase and say so,
-  rather than after every task.
-- **Do not echo what you wrote.** No `cat` of a file you just edited, no `git diff`
-  read back for confirmation, no re-reading a file after an `Edit` — the tool would
-  have errored. Two lines of summary per task is the whole report.
-- **Truncate loud commands.** Pipe test and build output through `tail -20`; on a
-  failure, grep for the failing assertion rather than reading the whole run.
-
-When context does get full (watch for system warnings or ~80% usage):
-1. Finish the current task if it is `in_progress`.
+When context is getting full (watch for system warnings or ~80% context usage):
+1. Finish the current task if it's `in_progress`.
 2. Stop before starting the next task.
 3. Report to the user:
    - Project
@@ -222,3 +194,13 @@ When context does get full (watch for system warnings or ~80% usage):
    - Next task to implement (path + title)
    - Any notes or blockers observed
 4. Ask the user to continue in a new session with `/work`.
+
+---
+
+## Blocked Task
+
+If a task has `status: blocked`:
+- Do not skip it.
+- Do not start subsequent tasks.
+- Report the blocked task path, title, and any notes from its **Notes** section.
+- Ask the user how to proceed.
