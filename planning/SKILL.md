@@ -217,6 +217,8 @@ in the files it names.>
 <Gotchas, dependencies, constraints. Omit the section entirely if there is nothing.>
 ```
 
+**Cheaper model for pattern tasks.** Add `model: claude-sonnet-5` to a task's frontmatter (under `status`) when it repeats a pattern the repo already has and its **How** names the existing example to copy, e.g. one more API endpoint shaped like an existing one, one more service template like the last, a page restyled the way a named page already was. Ralph runs such a task on that model once and falls back to the goal's model if it is not done after that. Leave it out (the goal's model) for anything that designs or decides: a new context, aggregate or invariant, a data migration, auth, permissions or security, the first of its kind, and every sweep or end-to-end task. When unsure, leave it out.
+
 Task sizing: 1–4 hours each, run in number order. Ordered so that each one leaves the repo working — `/work` commits after every task.
 
 Write **only this phase's tasks**. If a task would depend on a phase that does not exist yet, the phase ends before it.

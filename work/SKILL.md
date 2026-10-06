@@ -76,6 +76,16 @@ Read:
 - The `GOAL.md` its `**Goal:**` line names, if any — what it says is fixed holds for this task too
 - Any referenced files mentioned in the task
 
+#### Keep the session small
+
+Every turn re-sends the whole session, so every file read is paid for again on each turn after it. That is what uses up the usage limit, not the tests. Read what the task needs and no more:
+
+- **Large files in ranges.** For a file over ~300 lines (a reference repo's views, a big page or component), `grep -n` for the part you need, then Read it with `offset`/`limit`. Read a whole large file only when you are changing most of it.
+- **Read once.** Never read a file again that you already read or wrote in this session. Your own Edit and Write results are the current state. Re-read only what a command or formatter changed.
+- **No reading to check your work.** An Edit that succeeded is applied. Verify with the task's tests, not by reading the file back.
+- **Short command output.** Pipe builds, tests and e2e runs through `tail`/`grep` for the result and the first failure, and look further only when something failed.
+- **Search before you read.** Find the place with `grep`/`find` first, then read that place only, not the files around it in case they matter.
+
 ### Step 3 — Mark In Progress
 
 Edit the task file frontmatter:
